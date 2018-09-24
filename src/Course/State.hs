@@ -31,6 +31,8 @@ newtype State s a =
       -> (a, s)
   }
 
+newtype Pers = Pers { firstName :: Int -> Int     }
+
 -- | Run the `State` seeded with `s` and retrieve the resulting state.
 --
 -- prop> \(Fun _ f) s -> exec (State f) s == snd (runState (State f) s)
@@ -38,8 +40,8 @@ exec ::
   State s a
   -> s
   -> s
-exec =
-  error "todo: Course.State#exec"
+exec state  = snd . (runState state)
+
 
 -- | Run the `State` seeded with `s` and retrieve the resulting value.
 --
@@ -48,8 +50,8 @@ eval ::
   State s a
   -> s
   -> a
-eval =
-  error "todo: Course.State#eval"
+eval state  = fst . (runState state)
+  
 
 -- | A `State` where the state also distributes into the produced value.
 --
@@ -57,8 +59,12 @@ eval =
 -- (0,0)
 get ::
   State s s
-get =
-  error "todo: Course.State#get"
+get  = State {
+  runState  = \ s -> (s,s) 
+  }
+
+
+data State'' s a = State'' (s -> ( a, s))
 
 -- | A `State` where the resulting state is seeded with the given value.
 --
@@ -67,9 +73,10 @@ get =
 put ::
   s
   -> State s ()
-put =
-  error "todo: Course.State#put"
-
+put s = State {
+  runState = \ _ -> ((), s)
+}
+  
 -- | Implement the `Functor` instance for `State s`.
 --
 -- >>> runState ((+1) <$> State (\s -> (9, s * 2))) 3
@@ -79,9 +86,12 @@ instance Functor (State s) where
     (a -> b)
     -> State s a
     -> State s b
-  (<$>) =
-    error "todo: Course.State#(<$>)"
+  (<$>) f sp = State {runState = g}
+    where g s = let (a, s') = runState sp s
+                in     (      f a       ,       s'      )
 
+  
+    
 -- | Implement the `Applicative` instance for `State s`.
 --
 -- >>> runState (pure 2) 0
@@ -97,15 +107,18 @@ instance Applicative (State s) where
   pure ::
     a
     -> State s a
-  pure =
-    error "todo: Course.State pure#instance (State s)"
+  pure a  = State {runState = \s -> (a, s)}
+    
   (<*>) ::
     State s (a -> b)
     -> State s a
     -> State s b 
-  (<*>) =
-    error "todo: Course.State (<*>)#instance (State s)"
-
+  (<*>) sf sa = State {runState = g }
+    where  g s0 = let  (f, s1) = runState sf s0 
+                       (a, s2) = runState sa s1
+                       b = f a
+                  in  (b, s2) 
+                  
 -- | Implement the `Bind` instance for `State s`.
 --
 -- >>> runState ((const $ put 2) =<< put 1) 0
